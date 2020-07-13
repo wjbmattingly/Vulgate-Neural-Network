@@ -1,17 +1,17 @@
 from tensorflow import keras
 import random
-# from keras.layers import Conv2D
 import tensorflow as tf
 import re
 from string import digits
 import json
 
-
+#This function takes an entire text (lowercased and no punctuation) of a text and then separates it into words for processing
 def clean_data(filename, split_style=" "):
     with open (filename, "r", encoding="utf-8") as f:
         text = f.read().split(" ")
     return (text)
 
+#This function creates a bag of words based on the two texts, i.e. Scripture and non-Scripture
 def create_bwords(text1, text2):
     total_words = text1+text2
     word_index = list(dict.fromkeys(total_words))
@@ -22,6 +22,7 @@ def create_bwords(text1, text2):
         x=x+1
     return (bwords)
 
+#This function vectorizes the words from a text. I recommend combining both texts and then processing them simultaneously.
 def vectorize(text, bwords):
     vector_text = []
     for word in text:
@@ -29,6 +30,7 @@ def vectorize(text, bwords):
         vector_text.append(num_word)
     return (vector_text)
 
+#This function separates a text into predetermined chunks
 def create_chunks(text_array, chunk):
     chunks = [text_array[i:i + chunk] for i in range(0, len(text_array), chunk)]
     final = []
@@ -38,22 +40,23 @@ def create_chunks(text_array, chunk):
 
     return (final)
 
+#This function will allow you to create a reverse word index. I structured this off Tech with Tim's neural network lessons.
 def reverse_index(bwords):
     reverse_word_index = {value : key for (key, value) in bwords.items()}
     return (reverse_word_index)
 
+#This function reconstructions a text based on the reverse_index function.
 def reconst_text(text, reverse_word_index):
     return (" ".join([reverse_word_index.get(i, "?") for i in text]))
 
-def load_bwords():
-    pass
-
+#This function prepares the data with the correct labels. Feed one text at a time and assign it an integer of 0 or 1.
 def prepare_data(chunks, label):
     total_chunks = []
     for chunk in chunks:
         total_chunks.append((chunk, label))
     return (total_chunks)
 
+#This function processes the chunks into training data for the neural network.
 def create_training(total_chunks, cutoff):
     #randomize our data
     random.shuffle(total_chunks)
@@ -73,6 +76,7 @@ def create_training(total_chunks, cutoff):
         x=x+1
     return (training_data, training_labels, testing_data, testing_labels)
 
+#This is our neural network model. I have left a few examples of other optional layers.
 def create_model():
     model = keras.Sequential()
     model.add(keras.layers.Embedding(120000,16))
@@ -86,6 +90,7 @@ def create_model():
     model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
     return (model)
 
+#This function trains our model.
 def train_model(model, tt_data, val_size=.3, epochs=1, batch_size=16, save_model=False, save_r=True, save_bwords=False,chunk=5):
     vals = int(len(tt_data[0])*val_size)
     training_data = tt_data[0]
@@ -114,6 +119,7 @@ def train_model(model, tt_data, val_size=.3, epochs=1, batch_size=16, save_model
             json.dump(bwords, json_file, indent=4)
     return (model, results_file)
 
+#This function saves the results in a text file.
 def save_results(filename, model, batch_size, epochs, chunk, model_results, cutoff=0):
     with open (f"{str(filename)}.txt", "w", encoding="utf-8") as f:
         f.write("========================MODEL SUMMARY============================")
@@ -148,7 +154,7 @@ def save_results(filename, model, batch_size, epochs, chunk, model_results, cuto
         f.write("\n")
 
 
-
+#This function prepares a text to test the model on
 def prepare_source(filename, vects):
     with open (filename, "r", encoding="utf-8") as f:
         text = f.read()
@@ -169,6 +175,7 @@ def prepare_source(filename, vects):
         bwords.append(new_words)
     return (bwords)
 
+#This function runs the test on the test text
 def test_model(text_chunks, reverse_word_index, model, cutoff=0):
     results = []
     print ("Scripture Found: ")
@@ -182,6 +189,7 @@ def test_model(text_chunks, reverse_word_index, model, cutoff=0):
                 results.append((str(predict[0]), reconst_text(test, reverse_word_index)))
     return (results, cutoff)
 
+#This function outputs the results into the same text file as above.
 def write_test(results, filename):
     with open (filename+".txt", "a", encoding="utf-8") as f:
         for result in results:
